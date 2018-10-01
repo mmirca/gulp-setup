@@ -15,7 +15,10 @@ const imageminJpegRecompress = require('imagemin-jpeg-recompress');
 const imageminPngQuant  = require ('imagemin-pngquant');
 const autoprefixer = require('gulp-autoprefixer');
 const cleanCSS = require('gulp-clean-css');
+const concat = require('gulp-concat');
+const cached = require('gulp-cached');
 const chalk = require('chalk');
+const htmlreplace = require('gulp-html-replace');
 //
 // Simple tasks
 //
@@ -91,6 +94,27 @@ gulp.task('build', ['sass', 'clean:dist'], ()=>
 // ES2015 + uglify + SASS + imagemin
 gulp.task('build:imagemin', ['sass', 'clean:dist'], (callback)=>{
   runSequence(['minifyImages', 'build'], callback)
+});
+// Bundle
+gulp.task('build:bundle', ['sass', 'clean:dist'], (callback)=>{
+  delete cached.caches['bundle'];
+  gulp.src('app/*.html')
+  .pipe(useref({noconcat: true}))
+  .pipe(gulpIf('*.css', autoprefixer()))
+  .pipe(gulpIf('*.css', cleanCSS({debug: true}, logDetailsCSS)))
+  .pipe(gulpIf('*.js', babel({presets: ['@babel/env']})))
+  .pipe(gulpIf('*.js', cached('bundle')))
+  .pipe(gulpIf('*.js', concat('bundle.js')))
+  .pipe(gulpIf('!*.html', gulp.dest('dist')));
+  gulp.src('app/*.html')
+  .pipe(htmlreplace({js: 'bundle.js'}))
+  .pipe(gulp.dest('dist'));
+  gulp.src('app/images/**')
+  .pipe(gulp.dest('dist/images'));
+  gulp.src('app/fonts/**')
+  .pipe(gulp.dest('dist/fonts'));
+  gulp.src('app/css/**')
+  .pipe(gulp.dest('dist/css'));
 });
 // ES2015 + uglify + SASS + useref
 gulp.task('build:strict', ['sass', 'clean:dist'], (callback)=>{
