@@ -79,12 +79,24 @@ gulp.task('images', ()=>
   gulp.src('app/images/**')
   .pipe(gulp.dest('dist/images'))
 );
+// Prebundle
+gulp.task('prebundle', ['sass', 'clean:dist'], (callback)=>{
+  delete cached.caches['bundle'];
+  return gulp.src(['app/*.html', '!app/scss', '!app/scss/**'])
+  .pipe(useref({noconcat: true}))
+  .pipe(gulpIf('*.css', autoprefixer()))
+  .pipe(gulpIf('*.css', cleanCSS({debug: true}, logDetailsCSS)))
+  .pipe(gulpIf('*.js', babel({presets: ['@babel/env']})))
+  .pipe(gulpIf('*.js', cached('bundle')))
+  .pipe(gulpIf('*.js', concat('bundle.js')))
+  .pipe(gulp.dest('dist'));
+});
 //
 // Build tasks
 //
 // ES2015 + uglify + SASS
 gulp.task('build', ['sass', 'clean:dist'], ()=>
-  gulp.src('app/**')
+  gulp.src(['app/**', '!app/scss', '!app/scss/**'])
   .pipe(gulpIf('*.css', autoprefixer()))
   .pipe(gulpIf('*.css', cleanCSS({debug: true}, logDetailsCSS)))
   .pipe(gulpIf('*.js', babel({presets: ['@babel/env']})))
@@ -95,26 +107,18 @@ gulp.task('build', ['sass', 'clean:dist'], ()=>
 gulp.task('build:imagemin', ['sass', 'clean:dist'], (callback)=>{
   runSequence(['minifyImages', 'build'], callback)
 });
-// Bundle
-gulp.task('build:bundle', ['sass', 'clean:dist'], (callback)=>{
-  delete cached.caches['bundle'];
-  gulp.src('app/*.html')
-  .pipe(useref({noconcat: true}))
-  .pipe(gulpIf('*.css', autoprefixer()))
-  .pipe(gulpIf('*.css', cleanCSS({debug: true}, logDetailsCSS)))
-  .pipe(gulpIf('*.js', babel({presets: ['@babel/env']})))
-  .pipe(gulpIf('*.js', cached('bundle')))
-  .pipe(gulpIf('*.js', concat('bundle.js')))
-  .pipe(gulpIf('!*.html', gulp.dest('dist')));
-  gulp.src('app/*.html')
-  .pipe(htmlreplace({js: 'bundle.js'}))
-  .pipe(gulp.dest('dist'));
-  gulp.src('app/images/**')
-  .pipe(gulp.dest('dist/images'));
-  gulp.src('app/fonts/**')
-  .pipe(gulp.dest('dist/fonts'));
-  gulp.src('app/css/**')
-  .pipe(gulp.dest('dist/css'));
+// Bundle JS files
+gulp.task('build:bundle', ['prebundle'], callback=>{
+    gulp.src(['app/**', '!app/js', '!app/js/**', '!app/scss', '!app/scss/**'])
+    .pipe(gulpIf('*.html', htmlreplace({js: 'bundle.js'})))
+    .pipe(gulp.dest('dist'));
+    return gulp.src('dist/*.js')
+    .pipe(uglify())
+    .pipe(gulp.dest('dist'))
+});
+// Bundle JS files + imagemin
+gulp.task('build:bundle:imagemin', ['clean:dist'], (callback)=>{
+  runSequence(['build:bundle', 'minifyImages'], callback)
 });
 // ES2015 + uglify + SASS + useref
 gulp.task('build:strict', ['sass', 'clean:dist'], (callback)=>{
