@@ -6,7 +6,7 @@ Configuración ligera de gulp para automatizar procesos en el desarrollo web y m
 $ git clone https://github.com/mmirca/movinder.git
 $ cd gulp-setup
 $ npm install -g gulp
-$ npm install gulp
+$ npm install
 ```
 
 ## Tareas para el desarrollo
